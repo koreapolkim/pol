@@ -1578,11 +1578,20 @@ if(!String.prototype.replaceAll){
   };
 }
 
-/* 안드로이드는 하단 안내 팝업 */
+/* 안드로이드 사용자는 하단 안내 팝업 */
 (function () {
   var ua = navigator.userAgent || "";
   var isAndroid = /Android/i.test(ua);
   if (!isAndroid) return;
+
+  function toChromeIntentUrl() {
+    var url = location.href;
+    if (!/^https?:/i.test(url)) return null;
+
+    var scheme = url.indexOf("https://") === 0 ? "https" : "http";
+    var noScheme = url.replace(/^https?:\/\//i, ""); // https:// 제거
+    return "intent://" + noScheme + "#Intent;scheme=" + scheme + ";package=com.android.chrome;end";
+  }
 
   function showBar() {
     if (document.getElementById("androidDarkHintBar")) return;
@@ -1600,8 +1609,29 @@ if(!String.prototype.replaceAll){
     var msg = document.createElement("div");
     msg.style.cssText =
       "flex:1;color:#1F2430;line-height:1.25;font-size:14px;font-weight:900;";
-    msg.textContent = "다크모드를 사용중이면 크롬으로 접속해주세요.";
+    msg.textContent = "다크모드는 크롬으로 접속해주세요.";
 
+    // 크롬으로 열기 버튼
+    var openChrome = document.createElement("button");
+    openChrome.type = "button";
+    openChrome.textContent = "열기";
+    openChrome.style.cssText =
+      "border:none;border-radius:14px;padding:10px 12px;" +
+      "background:linear-gradient(180deg,#2F8CFF,#6DB7FF);color:#fff;font-weight:1000;cursor:pointer;";
+    openChrome.onclick = function () {
+      var intentUrl = toChromeIntentUrl();
+      if (!intentUrl) return;
+
+      // 1) 크롬 인텐트 시도
+      location.href = intentUrl;
+
+      // 2) 인텐트가 막히면 잠깐 후 일반 링크도 한 번 시도
+      setTimeout(function () {
+        try { location.href = location.href; } catch (e) {}
+      }, 600);
+    };
+
+    // 닫기 버튼
     var close = document.createElement("button");
     close.type = "button";
     close.textContent = "닫기";
@@ -1612,6 +1642,7 @@ if(!String.prototype.replaceAll){
     close.onclick = function () { bar.remove(); };
 
     bar.appendChild(msg);
+    bar.appendChild(openChrome);
     bar.appendChild(close);
     document.body.appendChild(bar);
   }
