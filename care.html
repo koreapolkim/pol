@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -1493,7 +1493,7 @@ padding:12px 14px;
       <header>
         <div class="brand">
           <div class="logo" id="brandHome" role="button" aria-label="홈으로 이동">
-            <span class="brandStrong">폴케어</span><span class="brandLight">경찰과 함께하는 피싱 범죄 모의체험</span>
+            <span class="brandStrong">폴케어</span><span class="brandLight">경찰과 함께하는 피싱 모의체험</span>
           </div>
           <div class="subtitle" id="brandSub"></div>
         </div>
@@ -1572,6 +1572,82 @@ padding:12px 14px;
   </div>
 
 <script>
+/* ===== ANDROID는 크롬으로 열기 ===== */
+(function () {
+  var ua = navigator.userAgent || "";
+  var isAndroid = /Android/i.test(ua);
+  if (!isAndroid) return; // iOS는 제외
+
+  // 삼성브라우저/카톡인앱/WebView 등 "크롬이 아닌" 경우만 시도
+  var isSamsung = /SamsungBrowser/i.test(ua);
+  var isKakao = /KAKAOTALK/i.test(ua);
+  var isWebView = /\bwv\b/.test(ua) || /; wv\)/.test(ua);
+  var isEdge = /\bEdgA\//i.test(ua);
+  var isOpera = /\bOPR\//i.test(ua);
+
+  // "진짜 크롬"만 통과
+  var looksLikeChrome = /\bChrome\/\d+/i.test(ua) && !isSamsung && !isEdge && !isOpera;
+
+  // 이미 크롬이면 그대로
+  if (looksLikeChrome) return;
+
+  // 무한루프 방지(1회만 해봐 안되면 나도 몰라)
+  try {
+    if (sessionStorage.getItem("__force_chrome_once__") === "1") return;
+    sessionStorage.setItem("__force_chrome_once__", "1");
+  } catch (e) {}
+
+  var url = location.href;
+  if (!/^https?:/i.test(url)) return;
+
+  var scheme = url.indexOf("https://") === 0 ? "https" : "http";
+  var noScheme = url.replace(/^https?:\/\//i, ""); // https:// 제거
+  var intentUrl = "intent://" + noScheme +
+    "#Intent;scheme=" + scheme +
+    ";package=com.android.chrome;end";
+
+  // 자동 시도(막히는 환경이 있으면 버튼도 같이 띄어브러)
+  setTimeout(function () {
+    location.href = intentUrl;
+  }, 50);
+
+  // 자동이 막히면 사용자가 눌러서 열게 “크롬으로 열기” 버튼
+  setTimeout(function () {
+    // 이미 다른 곳으로 이동했다면 됐고
+    try {
+      var bar = document.createElement("div");
+      bar.style.cssText =
+        "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;" +
+        "background:#ffffff;border:1px solid rgba(0,0,0,.12);border-radius:16px;" +
+        "box-shadow:0 14px 30px rgba(0,0,0,.18);padding:12px;display:flex;gap:10px;align-items:center;";
+
+      var msg = document.createElement("div");
+      msg.style.cssText = "flex:1;font-weight:900;color:#1F2430;line-height:1.25;font-size:14px;";
+      msg.textContent = "다크모드에서는 크롬에서 열어주세요.";
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.style.cssText =
+        "border:none;border-radius:14px;padding:10px 12px;font-weight:1000;" +
+        "background:linear-gradient(180deg,#2F8CFF,#6DB7FF);color:#fff;cursor:pointer;";
+      btn.textContent = "크롬으로 열기";
+      btn.onclick = function () { location.href = intentUrl; };
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.style.cssText =
+        "border:none;background:transparent;font-weight:1000;color:rgba(31,36,48,.55);cursor:pointer;";
+      close.textContent = "닫기";
+      close.onclick = function () { bar.remove(); };
+
+      bar.appendChild(msg);
+      bar.appendChild(btn);
+      bar.appendChild(close);
+
+      document.body.appendChild(bar);
+    } catch (e) {}
+  }, 900);
+})();
 if(!String.prototype.replaceAll){
   String.prototype.replaceAll = function(search, replacement){
     return this.split(search).join(replacement);
@@ -2360,16 +2436,10 @@ document.getElementById("shareMenu").onclick = async ()=>{
 
   const creditsLines = [
     "폴케어(Pol_Care)",
-    "<span class='small'>피싱 범죄예방 모의체험</span>",
+    "<span class='small'>피싱 범죄 예방 모의체험</span>",
     "",
     "기획 / 제작",
     "<span class='small'>전남경찰청 영암경찰서 범죄예방대응과</span>",
-    "",
-    "디자인 / 아이디어 / 홍보",
-    "<span class='small'>김진영 · 김은아</span>",
-    "",
-    "Special Thanks",
-    "<span class='small'>영암군청 · 농협은행(영암군지부) · 광주은행(영암지점) · 새마을금고 · 메가커피(영암점 · 삼호점) · 지역사회 단체 등</span>",
   ];
 
   function openCredits(){
@@ -4768,7 +4838,7 @@ window.SCENARIOS.exp_c_investigation = {
   type:"call",
   speedMs: window.DIALOG_FLOW_SPEED_MS,
   title:"수사기관 사칭(보이스피싱)",
-listSubtitle:"검찰·경찰을 사칭해 범죄 연루로 겁주고 현금 인출을 요구하면 사기입니다.",
+listSubtitle:"검찰·경찰을 사칭해 범죄 연루로 겁주고 현금 인출를 요구하면 사기입니다.",
   introText: "검찰·경찰 등을 사칭해 ‘범죄 연루’로 겁을 준 뒤 예금 보호를 해야한다며, 현금 인출 또는 수거책 전달로 금전을 빼앗는 보이스피싱입니다.",
   incoming:{ name:"서울중앙지방검찰청", number:"02-23XX-3X51" },
   voiceUrl: "https://koreapolkim.github.io/vo/gum2.mp3",
@@ -4991,7 +5061,7 @@ window.SCENARIOS.exp_c_post_card = {
   speedMs: window.DIALOG_FLOW_SPEED_MS,
   voiceUrl: "https://koreapolkim.github.io/voi/card2.mp3",
   title:"카드 배송(보이스피싱)",
-listSubtitle:"신청하지 않은 카드배송과 ‘사고예방팀’ 연결을 유도하면 사기 가능성이 큽니다.",
+listSubtitle:"신청하지 않은 카드 배송과 ‘사고예방팀’ 연결을 유도하면 사기 가능성이 큽니다.",
   introText: "신청하지 않은 카드배송을 사칭해 불안 조성과 가짜 사고예방팀 안내로 금융 피해를 유발하는 보이스피싱입니다.",
   incoming:{ name:"카드배송 기사", number:"010-98XX-07X2" },
   keyPoints:[
@@ -5095,5 +5165,4 @@ listSubtitle:"신청하지 않은 카드배송과 ‘사고예방팀’ 연결�
 </script>
 </body>
 </html>
-
 
