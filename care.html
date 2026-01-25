@@ -1572,87 +1572,72 @@ padding:12px 14px;
   </div>
 
 <script>
-/* ===== ANDROID는 크롬으로 열기 ===== */
-(function () {
-  var ua = navigator.userAgent || "";
-  var isAndroid = /Android/i.test(ua);
-  if (!isAndroid) return; // iOS는 제외
-
-  // 삼성브라우저/카톡인앱/WebView 등 "크롬이 아닌" 경우만 시도
-  var isSamsung = /SamsungBrowser/i.test(ua);
-  var isKakao = /KAKAOTALK/i.test(ua);
-  var isWebView = /\bwv\b/.test(ua) || /; wv\)/.test(ua);
-  var isEdge = /\bEdgA\//i.test(ua);
-  var isOpera = /\bOPR\//i.test(ua);
-
-  // "진짜 크롬"만 통과
-  var looksLikeChrome = /\bChrome\/\d+/i.test(ua) && !isSamsung && !isEdge && !isOpera;
-
-  // 이미 크롬이면 그대로
-  if (looksLikeChrome) return;
-
-  // 무한루프 방지(1회만 해봐 안되면 나도 몰라)
-  try {
-    if (sessionStorage.getItem("__force_chrome_once__") === "1") return;
-    sessionStorage.setItem("__force_chrome_once__", "1");
-  } catch (e) {}
-
-  var url = location.href;
-  if (!/^https?:/i.test(url)) return;
-
-  var scheme = url.indexOf("https://") === 0 ? "https" : "http";
-  var noScheme = url.replace(/^https?:\/\//i, ""); // https:// 제거
-  var intentUrl = "intent://" + noScheme +
-    "#Intent;scheme=" + scheme +
-    ";package=com.android.chrome;end";
-
-  // 자동 시도(막히는 환경이 있으면 버튼도 같이 띄어브러)
-  setTimeout(function () {
-    location.href = intentUrl;
-  }, 50);
-
-  // 자동이 막히면 사용자가 눌러서 열게 “크롬으로 열기” 버튼
-  setTimeout(function () {
-    // 이미 다른 곳으로 이동했다면 됐고
-    try {
-      var bar = document.createElement("div");
-      bar.style.cssText =
-        "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;" +
-        "background:#ffffff;border:1px solid rgba(0,0,0,.12);border-radius:16px;" +
-        "box-shadow:0 14px 30px rgba(0,0,0,.18);padding:12px;display:flex;gap:10px;align-items:center;";
-
-      var msg = document.createElement("div");
-      msg.style.cssText = "flex:1;font-weight:900;color:#1F2430;line-height:1.25;font-size:14px;";
-      msg.textContent = "다크모드에서는 크롬에서 열어주세요.";
-
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.style.cssText =
-        "border:none;border-radius:14px;padding:10px 12px;font-weight:1000;" +
-        "background:linear-gradient(180deg,#2F8CFF,#6DB7FF);color:#fff;cursor:pointer;";
-      btn.textContent = "크롬으로 열기";
-      btn.onclick = function () { location.href = intentUrl; };
-
-      var close = document.createElement("button");
-      close.type = "button";
-      close.style.cssText =
-        "border:none;background:transparent;font-weight:1000;color:rgba(31,36,48,.55);cursor:pointer;";
-      close.textContent = "닫기";
-      close.onclick = function () { bar.remove(); };
-
-      bar.appendChild(msg);
-      bar.appendChild(btn);
-      bar.appendChild(close);
-
-      document.body.appendChild(bar);
-    } catch (e) {}
-  }, 900);
-})();
 if(!String.prototype.replaceAll){
   String.prototype.replaceAll = function(search, replacement){
     return this.split(search).join(replacement);
   };
 }
+
+/* 안드로이드 다크모드 사용자에게만 하단 팝업 */
+(function () {
+  var ua = navigator.userAgent || "";
+  var isAndroid = /Android/i.test(ua);
+  if (!isAndroid) return;
+
+  // 다크모드로 인식할 때만 표시
+  var prefersDark = false;
+  try {
+    prefersDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  } catch (e) {}
+
+  if (!prefersDark) return;
+
+  // 한번 닫으면 다시 안 뜨게
+  try {
+    if (sessionStorage.getItem("__android_dark_hint_closed__") === "1") return;
+  } catch (e) {}
+
+  function showBar() {
+    if (document.getElementById("androidDarkHintBar")) return;
+
+    var bar = document.createElement("div");
+    bar.id = "androidDarkHintBar";
+    bar.setAttribute("role", "dialog");
+    bar.setAttribute("aria-live", "polite");
+    bar.style.cssText =
+      "position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;" +
+      "background:#ffffff;border:1px solid rgba(0,0,0,.12);border-radius:16px;" +
+      "box-shadow:0 14px 30px rgba(0,0,0,.18);padding:12px;" +
+      "display:flex;gap:10px;align-items:center;";
+
+    var msg = document.createElement("div");
+    msg.style.cssText =
+      "flex:1;color:#1F2430;line-height:1.25;font-size:14px;font-weight:900;";
+    msg.textContent = "안드로이드에서 다크모드를 사용 중이면 크롬으로 접속해주세요.";
+
+    var close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "닫기";
+    close.setAttribute("aria-label", "닫기");
+    close.style.cssText =
+      "border:none;border-radius:14px;padding:10px 12px;" +
+      "background:rgba(31,36,48,.08);color:#1F2430;font-weight:1000;cursor:pointer;";
+    close.onclick = function () {
+      try { sessionStorage.setItem("__android_dark_hint_closed__", "1"); } catch (e) {}
+      bar.remove();
+    };
+
+    bar.appendChild(msg);
+    bar.appendChild(close);
+    document.body.appendChild(bar);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", showBar);
+  } else {
+    showBar();
+  }
+})();
 
 /* 태그/내용 복사 방지와 길게누르기 방지(허접죄송ㅎㅎㅎ) */
 (function(){
