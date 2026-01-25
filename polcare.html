@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="color-scheme" content="light">
+<title>폴케어</title>
+
+<style>
+  :root{ --bg1:#f2f8ff; --bg2:#ffffff; }
+  html,body{height:100%;margin:0;}
+  body{
+    min-height:100svh;
+    display:grid;
+    place-items:center;
+    background: radial-gradient(circle at 50% 45%, var(--bg1), var(--bg2) 60%);
+    overflow:hidden;
+  }
+
+  .wrap{
+    width:min(180px, 40vmin);   
+    aspect-ratio:1/1;
+    display:grid;
+    place-items:center;
+  }
+
+  .stack{
+    position:relative;
+    width:100%;
+    height:100%;
+    transform-origin:50% 50%;
+    transform: scale(.60);    
+  }
+
+  .layer{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    user-select:none;
+    -webkit-user-drag:none;
+    pointer-events:none;
+  }
+
+  .revealLayer{ opacity:0; }
+  .seq .revealLayer{
+    animation: revealOn .01s linear 1.00s forwards;
+  }
+  @keyframes revealOn { to{ opacity:1; } }
+
+  #revealStroke{
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .seq #revealStroke{
+    animation: drawCheck .55s cubic-bezier(.2,.8,.2,1) 1.00s forwards;
+  }
+  @keyframes drawCheck{ to{ stroke-dashoffset: 0; } }
+
+  .finalCheck{ opacity:0; }
+  .seq .finalCheck{
+    animation: finalIn .10s ease-out 1.55s forwards;
+  }
+  @keyframes finalIn { to{opacity:1;} }
+
+  @media (prefers-reduced-motion: reduce){
+    .seq #revealStroke{ animation:none; stroke-dashoffset:0; }
+    .seq .finalCheck{ animation:none; opacity:1; }
+    .seq .stack{ animation:none; }
+  }
+</style>
+</head>
+
+<body>
+  <div class="wrap seq" aria-label="PolCare 로딩">
+    <div class="stack">
+      <img class="layer" src="https://koreapolkim.github.io/sf/shield.png" alt="" />
+
+      <svg class="layer revealLayer" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <mask id="revealCheck">
+            <rect width="512" height="512" fill="black"/>
+            <g transform="translate(0 0)">
+              <path id="revealStroke"
+                pathLength="1"
+                d="M176 253 L236 310 L340 200"
+                fill="none"
+                stroke="white"
+                stroke-width="60"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </g>
+          </mask>
+        </defs>
+
+        <image href="https://koreapolkim.github.io/sf/check.png"
+               xlink:href="https://koreapolkim.github.io/sf/check.png"
+               x="0" y="0" width="512" height="512"
+               mask="url(#revealCheck)"/>
+      </svg>
+
+      <img class="layer finalCheck" src="https://koreapolkim.github.io/sf/check.png" alt="" />
+    </div>
+  </div>
+
+  <!-- 소리 -->
+  <audio id="lockSound"
+         src="https://koreapolkim.github.io/p-m/ch.mp3"
+         preload="auto"></audio>
+
+<script>
+  // 소리 재생 시간 (체크 완료 시점과 맞춤)
+  let played = false;
+  const lockMomentMs = 1200;  
+  const audioEl = document.getElementById("lockSound");
+
+  function playOnce(){
+    if(played) return;
+    played = true;
+    if(audioEl){
+      try{
+        audioEl.currentTime = 0;
+        audioEl.play().catch(() => {
+          // 자동재생 막혀도 그냥 무시
+        });
+      }catch(e){}
+    }
+  }
+
+  // 1) 자동 재생 시도 (데스크톱·일부 브라우저용)
+  setTimeout(playOnce, lockMomentMs);
+
+  // 2) iOS 등 자동재생 막힌 경우: 첫 터치에서 바로 재생
+  function onFirstGesture(){
+    if(!played){
+      playOnce();
+    }
+    window.removeEventListener("pointerdown", onFirstGesture);
+    window.removeEventListener("touchstart", onFirstGesture);
+  }
+  window.addEventListener("pointerdown", onFirstGesture);
+  window.addEventListener("touchstart", onFirstGesture);
+
+  // 다른 페이지로 이동 (스플래시 끝난 뒤)
+  setTimeout(() => {
+    location.href = "care.html";   // 이동할 경로
+  }, 2500);
+</script>
+</body>
+
+</html>
