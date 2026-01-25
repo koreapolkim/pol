@@ -1578,79 +1578,28 @@ if(!String.prototype.replaceAll){
   };
 }
 
-/* 안드로이드 다크일대만 보일 때만 하단 팝업 */
+/* 안드로이드 사용자는 하단 안내 팝업 */
 (function () {
   var ua = navigator.userAgent || "";
-  if (!/Android/i.test(ua)) return;
+  var isAndroid = /Android/i.test(ua);
+  if (!isAndroid) return;
 
   function toChromeIntentUrl() {
     var url = location.href;
     if (!/^https?:/i.test(url)) return null;
+
     var scheme = url.indexOf("https://") === 0 ? "https" : "http";
-    var noScheme = url.replace(/^https?:\/\//i, "");
+    var noScheme = url.replace(/^https?:\/\//i, ""); // https:// 제거
     return "intent://" + noScheme + "#Intent;scheme=" + scheme + ";package=com.android.chrome;end";
   }
 
-  function parseRGB(str) {
-    var m = String(str || "").match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-    if (!m) return null;
-    return { r: +m[1], g: +m[2], b: +m[3] };
-  }
-
-  function looksWeirdPrimaryBtn() {
-    // 체험하기 없으면 다른 primary 버튼도 하나 체크
-    var btn = document.getElementById("goExpMenu") || document.getElementById("goExpFromReport");
-    if (!btn) return false;
-
-    var cs = getComputedStyle(btn);
-
-    // 정상(라이트) 기대값은 .btn.primary 는 그라데이션과 글자 흰색
-    // (.btn.primary 정의: background: linear-gradient..., color:#fff)  [oai_citation:1‡최종 1.txt](sediment://file_00000000371c7207a7615d200aaeb7f1)
-    var bgImg = cs.backgroundImage;
-    var txt = parseRGB(cs.color);
-    var isTextWhite = txt ? (txt.r > 235 && txt.g > 235 && txt.b > 235) : false;
-    var hasGradient = bgImg && bgImg !== "none" && /gradient/i.test(bgImg);
-    var btnHasFilter = (cs.filter && cs.filter !== "none") || (cs.webkitFilter && cs.webkitFilter !== "none");
-
-    // 그라데이션이 사라지거나 글자가 흰색이 아니거나 버튼에 필터가 걸리면 다크
-    return (!hasGradient) || (!isTextWhite) || btnHasFilter;
-  }
-
-  function hasForcedFilterOnRoot() {
-    try {
-      var de = document.documentElement;
-      var bd = document.body;
-      if (!bd) return false;
-
-      var v = [
-        getComputedStyle(de).filter,
-        getComputedStyle(bd).filter,
-        getComputedStyle(de).webkitFilter,
-        getComputedStyle(bd).webkitFilter
-      ];
-      return v.some(function (x) { return x && x !== "none"; });
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function isDarkHintActive() {
-    var prefersDark = false;
-    try {
-      prefersDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    } catch (e) {}
-
-    // 아따 어렵다
-    // 체험하기 버튼 색상 바뀌면 다크임
-    return prefersDark || hasForcedFilterOnRoot() || looksWeirdPrimaryBtn();
-  }
-
-  function showBarIfNeeded() {
-    if (!isDarkHintActive()) return;
+  function showBar() {
     if (document.getElementById("androidDarkHintBar")) return;
 
     var bar = document.createElement("div");
     bar.id = "androidDarkHintBar";
+    bar.setAttribute("role", "dialog");
+    bar.setAttribute("aria-live", "polite");
     bar.style.cssText =
       "position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;" +
       "background:#ffffff;border:1px solid rgba(0,0,0,.12);border-radius:16px;" +
@@ -1658,9 +1607,11 @@ if(!String.prototype.replaceAll){
       "display:flex;gap:10px;align-items:center;";
 
     var msg = document.createElement("div");
-    msg.style.cssText = "flex:1;color:#1F2430;line-height:1.25;font-size:14px;font-weight:900;";
+    msg.style.cssText =
+      "flex:1;color:#1F2430;line-height:1.25;font-size:14px;font-weight:900;";
     msg.textContent = "다크모드는 크롬으로 접속하세요";
 
+    // 크롬으로 열기 버튼
     var openChrome = document.createElement("button");
     openChrome.type = "button";
     openChrome.textContent = "열기";
@@ -1669,12 +1620,22 @@ if(!String.prototype.replaceAll){
       "background:linear-gradient(180deg,#2F8CFF,#6DB7FF);color:#fff;font-weight:1000;cursor:pointer;";
     openChrome.onclick = function () {
       var intentUrl = toChromeIntentUrl();
-      if (intentUrl) location.href = intentUrl;
+      if (!intentUrl) return;
+
+      // 1) 크롬 인텐트 시도
+      location.href = intentUrl;
+
+      // 2) 인텐트가 막히면 잠깐 후 일반 링크도 한 번 시도
+      setTimeout(function () {
+        try { location.href = location.href; } catch (e) {}
+      }, 600);
     };
 
+    // 닫기 버튼
     var close = document.createElement("button");
     close.type = "button";
     close.textContent = "닫기";
+    close.setAttribute("aria-label", "닫기");
     close.style.cssText =
       "border:none;border-radius:14px;padding:10px 12px;" +
       "background:rgba(31,36,48,.08);color:#1F2430;font-weight:1000;cursor:pointer;";
@@ -1686,22 +1647,10 @@ if(!String.prototype.replaceAll){
     document.body.appendChild(bar);
   }
 
-  function start() {
-    // 다크 적용 여러 번 확인
-    var tries = 0;
-    (function poll() {
-      tries++;
-      showBarIfNeeded();
-      if (tries < 12 && !document.getElementById("androidDarkHintBar")) {
-        setTimeout(poll, 250);
-      }
-    })();
-  }
-
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
+    document.addEventListener("DOMContentLoaded", showBar);
   } else {
-    start();
+    showBar();
   }
 })();
 
