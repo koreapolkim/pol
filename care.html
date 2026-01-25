@@ -1578,26 +1578,61 @@ if(!String.prototype.replaceAll){
   };
 }
 
-/* 안드로이드 다크모드 사용자에게만 하단 팝업 */
+/* 안드로이드에서 다크가 적용 중이면 하단 안내 팝업 */
 (function () {
   var ua = navigator.userAgent || "";
   var isAndroid = /Android/i.test(ua);
   if (!isAndroid) return;
 
-  // 다크모드로 인식할 때만 표시
-  var prefersDark = false;
-  try {
-    prefersDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  } catch (e) {}
+  function hasForcedFilter() {
+    try {
+      var de = document.documentElement;
+      var bd = document.body;
+      if (!bd) return false;
 
-  if (!prefersDark) return;
+      var f1 = getComputedStyle(de).filter;
+      var f2 = getComputedStyle(bd).filter;
+      var wf1 = getComputedStyle(de).webkitFilter;
+      var wf2 = getComputedStyle(bd).webkitFilter;
 
-  // 한번 닫으면 다시 안 뜨게
-  try {
-    if (sessionStorage.getItem("__android_dark_hint_closed__") === "1") return;
-  } catch (e) {}
+      return [f1, f2, wf1, wf2].some(function (v) {
+        return v && v !== "none";
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isDarkBackground() {
+    try {
+      var bd = document.body;
+      var de = document.documentElement;
+      if (!bd) return false;
+
+      var bg = getComputedStyle(bd).backgroundColor || getComputedStyle(de).backgroundColor || "";
+      var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!m) return false;
+
+      var r = +m[1], g = +m[2], b = +m[3];
+      var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b; // 0~255
+      return lum < 140; 
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isDarkActive() {
+    var prefersDark = false;
+    try {
+      prefersDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    } catch (e) {}
+
+    // 안 먹는 환경 대비
+    return prefersDark || hasForcedFilter() || isDarkBackground();
+  }
 
   function showBar() {
+    if (!isDarkActive()) return; // 여기서 최종 판정
     if (document.getElementById("androidDarkHintBar")) return;
 
     var bar = document.createElement("div");
@@ -1613,7 +1648,7 @@ if(!String.prototype.replaceAll){
     var msg = document.createElement("div");
     msg.style.cssText =
       "flex:1;color:#1F2430;line-height:1.25;font-size:14px;font-weight:900;";
-    msg.textContent = "안드로이드에서 다크모드를 사용 중이면 크롬으로 접속해주세요.";
+    msg.textContent = "다크모드를 사용중이면 크롬으로 접속해주세요.";
 
     var close = document.createElement("button");
     close.type = "button";
@@ -1622,11 +1657,7 @@ if(!String.prototype.replaceAll){
     close.style.cssText =
       "border:none;border-radius:14px;padding:10px 12px;" +
       "background:rgba(31,36,48,.08);color:#1F2430;font-weight:1000;cursor:pointer;";
-    close.onclick = function () {
-      try { sessionStorage.setItem("__android_dark_hint_closed__", "1"); } catch (e) {}
-      bar.remove();
-    };
-
+    close.onclick = function () { bar.remove(); };
     bar.appendChild(msg);
     bar.appendChild(close);
     document.body.appendChild(bar);
